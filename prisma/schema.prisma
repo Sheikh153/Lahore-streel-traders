@@ -1,0 +1,227 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// A single-row settings table — the business's own letterhead info, used on
+// generated invoices. Always read/written via id "default".
+model CompanySettings {
+  id                String   @id @default("default")
+  name              String   @default("Your Business Name")
+  address           String?
+  phone             String?
+  email             String?
+  defaultVatPercent Float?   // prefilled on new sales; still editable per sale
+  updatedAt         DateTime @updatedAt
+}
+
+// A person or business the yard deals with — a supplier (sells scrap to us),
+// a buyer (buys processed material from us), or both.
+model Contact {
+  id        String     @id @default(cuid())
+  name      String
+  type      String     @default("supplier") // "supplier" | "buyer" | "both"
+  cnic      String?
+  phone     String?
+  email     String?
+  address   String?
+  notes     String?
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  purchases Purchase[]
+  sales     Sale[]
+  payments  Payment[]
+}
+
+// Inventory is tracked per material using a moving weighted-average cost:
+// avgCostPerKg is computed on the fly (see _lib/costing.ts) as
+// Σ(purchase.weightKg × purchase.landedCostPerKg) ÷ Σ(purchase.weightKg)
+// across every lot ever bought — sales draw stock down without changing
+// that average; only new purchases (and their expenses) shift it.
+model Material {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  unit       String     @default("kg")
+  stockKg    Float      @default(0)
+  pricePerKg Float      @default(0) // suggested/default rate, prefilled on new purchases
+  lowStockKg Float?
+  location   String?
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  purchases  Purchase[]
+  sales      Sale[]
+}
+
+// A purchase = one "lot" bought from a supplier. landedCostPerKg is cached
+// here (cheap to keep in sync — it only depends on this lot's own weight,
+// rate, and expenses) and recomputed whenever the lot or its expenses change.
+model Purchase {
+  id                  String       @id @default(cuid())
+  lotId               String       @unique
+  contactId           String
+  contact             Contact      @relation(fields: [contactId], references: [id])
+  materialId          String
+  material            Material     @relation(fields: [materialId], references: [id])
+  weightKg            Float
+  ratePerKg           Float
+  totalAmount         Float
+  landedCostPerKg     Float        @default(0)
+  weighbridgeWeightKg Float?
+  vehicleNumber       String?
+  biltyNumber         String?
+  receiptNumber       String?
+  thicknessMm         Float?
+  heightMm            Float?
+  lengthMm            Float?
+  notes               String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  expenses            Expense[]
+  payments            Payment[]
+  attachments         Attachment[]
+
+  @@index([contactId])
+  @@index([materialId])
+}
+
+// A sale = stock out to a buyer, drawn from the material's blended average
+// cost at that moment (costPerKgAtSale is a snapshot so past profit figures
+// never shift retroactively when new purchases change the running average).
+model Sale {
+  id                  String       @id @default(cuid())
+  saleRef             String       @unique
+  contactId           String
+  contact             Contact      @relation(fields: [contactId], references: [id])
+  materialId          String
+  material            Material     @relation(fields: [materialId], references: [id])
+  weightKg            Float
+  ratePerKg           Float
+  totalAmount         Float // pre-VAT sale value — profit is computed against this
+  vatPercent          Float        @default(0)
+  vatAmount           Float        @default(0)
+  grandTotal          Float        @default(0) // totalAmount + vatAmount — what the buyer actually owes
+  costPerKgAtSale     Float
+  profitAmount        Float
+  weighbridgeWeightKg Float?
+  vehicleNumber       String?
+  biltyNumber         String?
+  receiptNumber       String?
+  thicknessMm         Float?
+  heightMm            Float?
+  lengthMm            Float?
+  notes               String?
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+  payments            Payment[]
+  attachments         Attachment[]
+
+  @@index([contactId])
+  @@index([materialId])
+}
+
+// Logistics/handling costs for a specific lot — these are what make up its
+// landed cost beyond the raw purchase rate. Not tied to a contact/payment:
+// they're recorded as incurred, not paid out through this app.
+model Expense {
+  id         String   @id @default(cuid())
+  purchaseId String
+  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  category   String // "freight" | "loading" | "unloading" | "labour" | "other"
+  amount     Float
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  @@index([purchaseId])
+}
+
+// General business overhead — rent, utilities, salaries, etc. Not tied to
+// any lot; these reduce net profit but don't touch landed cost or inventory.
+model CompanyExpense {
+  id        String   @id @default(cuid())
+  category  String // "rent" | "utilities" | "salaries" | "transport" | "maintenance" | "office" | "other"
+  amount    Float
+  notes     String?
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([date])
+}
+
+// A business owner/partner who puts capital into the business. Separate
+// from Contact (suppliers/buyers) and User (people who log in) — a partner
+// is neither, though the same person could also happen to be a User.
+model Partner {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  createdAt   DateTime     @default(now())
+  investments Investment[]
+}
+
+// Capital a partner has put into the business — equity, not revenue or a
+// loan. Doesn't touch profit/loss; it's tracked separately as paid-in capital.
+model Investment {
+  id        String   @id @default(cuid())
+  partnerId String
+  partner   Partner  @relation(fields: [partnerId], references: [id], onDelete: Restrict)
+  amount    Float
+  date      DateTime @default(now())
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([partnerId])
+  @@index([date])
+}
+
+// A payment out to a supplier (against a purchase) or in from a buyer
+// (against a sale). Multiple payments can apply against the same
+// purchase/sale, which is how partial payments and payable/receivable
+// balances are derived — there's no separate "status" field to fall out of sync.
+model Payment {
+  id         String    @id @default(cuid())
+  direction  String // "out" (paid to a supplier) | "in" (received from a buyer)
+  amount     Float
+  contactId  String
+  contact    Contact   @relation(fields: [contactId], references: [id])
+  purchaseId String?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
+  saleId     String?
+  sale       Sale?     @relation(fields: [saleId], references: [id], onDelete: Restrict)
+  method     String?
+  notes      String?
+  createdAt  DateTime  @default(now())
+
+  @@index([contactId])
+  @@index([purchaseId])
+  @@index([saleId])
+}
+
+// Receipts, weighbridge slips, bills — uploaded to /public/uploads and
+// attached to the purchase or sale they document.
+model Attachment {
+  id         String    @id @default(cuid())
+  url        String
+  filename   String
+  mimeType   String
+  size       Int
+  purchaseId String?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  saleId     String?
+  sale       Sale?     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  createdAt  DateTime  @default(now())
+
+  @@index([purchaseId])
+  @@index([saleId])
+}
