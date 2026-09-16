@@ -160,15 +160,37 @@ model Expense {
 // General business overhead — rent, utilities, salaries, etc. Not tied to
 // any lot; these reduce net profit but don't touch landed cost or inventory.
 model CompanyExpense {
-  id        String   @id @default(cuid())
-  category  String // "rent" | "utilities" | "salaries" | "transport" | "maintenance" | "office" | "other"
-  amount    Float
-  notes     String?
-  date      DateTime @default(now())
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String          @id @default(cuid())
+  category   String // "rent" | "utilities" | "salaries" | "transport" | "maintenance" | "office" | "other"
+  amount     Float
+  notes      String?
+  date       DateTime        @default(now())
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  archiveId  String?
+  archive    ExpenseArchive? @relation(fields: [archiveId], references: [id])
 
   @@index([date])
+  @@index([archiveId])
+}
+
+// A snapshot of one expense "period" (the 10th of a month through the 9th
+// of the next) — created automatically the first time anyone opens the
+// Expenses page on or after the 10th. Rows aren't deleted, only tagged via
+// CompanyExpense.archiveId, so nothing here affects profit/KPI totals
+// (which read CompanyExpense directly) — this only clears the *current*
+// list on the Expenses page and files the period away as a browsable,
+// printable record.
+model ExpenseArchive {
+  id          String           @id @default(cuid())
+  label       String // e.g. "Aug 10 – Sep 9, 2026"
+  periodStart DateTime
+  periodEnd   DateTime
+  totalAmount Float
+  createdAt   DateTime         @default(now())
+  expenses    CompanyExpense[]
+
+  @@index([periodStart])
 }
 
 // A business owner/partner who puts capital into the business. Separate

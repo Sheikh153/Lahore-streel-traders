@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { verifySession } from "@/app/lib/dal";
 import { formatCurrency, formatDateLong } from "@/app/dashboard/_lib/format";
 import DeleteButton from "@/app/dashboard/_components/DeleteButton";
 import { getCompanyExpenses } from "./_lib/queries";
+import { ensureExpensePeriodsArchived, getExpenseArchives, periodStartFor } from "./_lib/archive";
 import { deleteCompanyExpense, createCompanyExpense } from "./actions";
 import { CATEGORY_LABEL, type CompanyExpenseCategory } from "./_lib/categories";
 import CompanyExpenseForm from "./_components/CompanyExpenseForm";
@@ -15,8 +17,17 @@ export default async function ExpensesPage({
   await verifySession();
   const { q } = await searchParams;
   const search = typeof q === "string" ? q : undefined;
-  const expenses = await getCompanyExpenses(search);
+
+  // Files away any past period (10th-to-9th) that hasn't been archived
+  // yet — this is what makes the list "reset" on the 10th of each month.
+  await ensureExpensePeriodsArchived();
+
+  const [expenses, archives] = await Promise.all([
+    getCompanyExpenses(search),
+    getExpenseArchives(),
+  ]);
   const total = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const currentPeriodStart = periodStartFor(new Date());
 
   return (
     <div className="flex flex-col gap-6">
@@ -27,15 +38,20 @@ export default async function ExpensesPage({
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Business overhead — rent, utilities, salaries, and other running costs.
           These reduce net profit but aren&apos;t tied to any purchase or sale.
+          The list below resets on the 10th of each month — last month&apos;s
+          entries are filed under Archived months.
         </p>
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
         <p className="text-xs text-slate-500 dark:text-slate-400">
-          {search ? "Matching total" : "Total (all time)"}
+          {search ? "Matching total" : "Total (this period)"}
         </p>
         <p className="mt-1 text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-50">
           {formatCurrency(total)}
+        </p>
+        <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+          Since {formatDateLong(currentPeriodStart)}
         </p>
       </div>
 
@@ -103,6 +119,34 @@ export default async function ExpensesPage({
           </div>
         )}
       </div>
+
+      {archives.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+          <div className="border-b border-slate-100 px-5 py-3 dark:border-slate-800">
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
+              Archived months
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              Filed away automatically at the start of each period. Open one to view or print it.
+            </p>
+          </div>
+          <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+            {archives.map((a) => (
+              <li key={a.id}>
+                <Link
+                  href={`/dashboard/expenses/archive/${a.id}`}
+                  className="flex items-center justify-between gap-3 px-5 py-3 text-sm transition-colors hover:bg-slate-50 dark:hover:bg-slate-800"
+                >
+                  <span className="text-slate-900 dark:text-slate-50">{a.label}</span>
+                  <span className="tabular-nums font-medium text-slate-700 dark:text-slate-300">
+                    {formatCurrency(a.totalAmount)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

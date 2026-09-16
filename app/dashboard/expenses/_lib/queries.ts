@@ -2,16 +2,21 @@ import "server-only";
 
 import { prisma } from "@/app/lib/db";
 
+/** Only the current (unarchived) period's rows — past periods are filed
+ * away by ensureExpensePeriodsArchived and browsed separately. */
 export function getCompanyExpenses(search?: string) {
   return prisma.companyExpense.findMany({
-    where: search
-      ? {
-          OR: [
-            { category: { contains: search } },
-            { notes: { contains: search } },
-          ],
-        }
-      : undefined,
+    where: {
+      archiveId: null,
+      ...(search
+        ? {
+            OR: [
+              { category: { contains: search } },
+              { notes: { contains: search } },
+            ],
+          }
+        : {}),
+    },
     orderBy: { date: "desc" },
   });
 }

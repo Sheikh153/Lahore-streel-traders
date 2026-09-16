@@ -5,7 +5,7 @@ import { verifySession } from "@/app/lib/dal";
 import { formatCurrency, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
 import { getSaleById } from "@/app/dashboard/sales/_lib/queries";
 import { getCompanySettings } from "@/app/dashboard/settings/_lib/queries";
-import PrintButton from "./_components/PrintButton";
+import PrintButton from "@/app/dashboard/_components/PrintButton";
 
 export const metadata: Metadata = { title: "Invoice" };
 
