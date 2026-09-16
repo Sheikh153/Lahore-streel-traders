@@ -193,6 +193,31 @@ model ExpenseArchive {
   @@index([periodStart])
 }
 
+// A saved snapshot of one calendar year's overview totals — filed away
+// automatically the first time anyone opens the dashboard after Jan 1 for
+// any complete past year that isn't saved yet, or on demand (e.g. mid-year)
+// via "Save this year's report". Doesn't touch Sale/Purchase/Payment data
+// at all (unlike CompanyExpense archiving) — those stay live forever since
+// costing/ledgers depend on the full history; this is just a cached copy
+// of the computed totals for fast, printable year-over-year reference.
+model YearlyReport {
+  id           String   @id @default(cuid())
+  year         Int      @unique
+  label        String // e.g. "2026"
+  revenue      Float
+  netProfit    Float
+  weightBought Float
+  weightSold   Float
+  stockOnHandKg Float
+  stockValue   Float
+  receivables  Float
+  payables     Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([year])
+}
+
 // A business owner/partner who puts capital into the business. Separate
 // from Contact (suppliers/buyers) and User (people who log in) — a partner
 // is neither, though the same person could also happen to be a User.

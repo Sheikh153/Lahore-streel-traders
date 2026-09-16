@@ -2,6 +2,7 @@ import "server-only";
 
 import { prisma } from "@/app/lib/db";
 import { getMaterialAvgCostPerKgMap } from "./costing";
+import { getYearActivityTotals } from "./yearlyReports";
 import { deriveStatus } from "./balances";
 import type { TrendPoint } from "../_components/TrendChart";
 import type { MaterialSlice } from "../_components/MaterialBreakdown";
@@ -79,6 +80,12 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
   const soldThis = sumWeight(salesThisMonth);
   const soldLast = sumWeight(salesLastMonth);
 
+  const currentYear = now.getFullYear();
+  const [thisYear, lastYear] = await Promise.all([
+    getYearActivityTotals(currentYear),
+    getYearActivityTotals(currentYear - 1),
+  ]);
+
   const avgCostMap = await getMaterialAvgCostPerKgMap(materials.map((m) => m.id));
   const stockValue = materials.reduce((s, m) => s + m.stockKg * (avgCostMap.get(m.id) ?? 0), 0);
   const stockOnHandKg = materials.reduce((s, m) => s + m.stockKg, 0);
@@ -104,9 +111,21 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
       upIsGood: true,
     },
     {
+      label: "Revenue this year",
+      value: `Rs ${Math.round(thisYear.revenue).toLocaleString("en-US")}`,
+      deltaPercent: percentDelta(thisYear.revenue, lastYear.revenue),
+      upIsGood: true,
+    },
+    {
       label: "Net profit this month",
       value: `Rs ${Math.round(profitThis).toLocaleString("en-US")}`,
       deltaPercent: percentDelta(profitThis, profitLast),
+      upIsGood: true,
+    },
+    {
+      label: "Net profit this year",
+      value: `Rs ${Math.round(thisYear.netProfit).toLocaleString("en-US")}`,
+      deltaPercent: percentDelta(thisYear.netProfit, lastYear.netProfit),
       upIsGood: true,
     },
     {
@@ -136,9 +155,21 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
       upIsGood: true,
     },
     {
+      label: "Weight bought this year",
+      value: `${thisYear.weightBought.toLocaleString("en-US")} kg`,
+      deltaPercent: percentDelta(thisYear.weightBought, lastYear.weightBought),
+      upIsGood: true,
+    },
+    {
       label: "Weight sold this month",
       value: `${soldThis.toLocaleString("en-US")} kg`,
       deltaPercent: percentDelta(soldThis, soldLast),
+      upIsGood: true,
+    },
+    {
+      label: "Weight sold this year",
+      value: `${thisYear.weightSold.toLocaleString("en-US")} kg`,
+      deltaPercent: percentDelta(thisYear.weightSold, lastYear.weightSold),
       upIsGood: true,
     },
     {
