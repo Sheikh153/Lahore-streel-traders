@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import { formatCurrency } from "@/app/dashboard/_lib/format";
-import type { ExpenseFormState } from "../actions";
 import type { DeleteState } from "@/app/dashboard/_components/DeleteButton";
 import DeleteButton from "@/app/dashboard/_components/DeleteButton";
 
@@ -14,12 +13,18 @@ type Expense = {
   notes: string | null;
 };
 
-const CATEGORIES = ["freight", "loading", "unloading", "labour", "other"];
+type ExpenseFormState = { error?: string } | undefined;
 
+const DEFAULT_CATEGORIES = ["freight", "loading", "unloading", "labour", "other"];
+
+// Shared by Purchase (adds to landed cost) and Sale (subtracts from profit)
+// detail pages — same shape, different category vocabulary and heading.
 export default function ExpensesPanel({
   expenses,
   addAction,
   deleteAction,
+  categories = DEFAULT_CATEGORIES,
+  heading = "Expenses (freight, loading, labour…)",
 }: {
   expenses: Expense[];
   addAction: (
@@ -27,6 +32,8 @@ export default function ExpensesPanel({
     formData: FormData,
   ) => Promise<ExpenseFormState>;
   deleteAction: (id: string, state: DeleteState, formData: FormData) => Promise<DeleteState>;
+  categories?: string[];
+  heading?: string;
 }) {
   const total = expenses.reduce((s, e) => s + e.amount, 0);
 
@@ -34,7 +41,7 @@ export default function ExpensesPanel({
     <div className="rounded-xl border border-slate-200 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-50">
-          Expenses (freight, loading, labour…)
+          {heading}
         </h3>
         <span className="text-sm font-semibold tabular-nums text-slate-900 dark:text-slate-50">
           {formatCurrency(total)}
@@ -66,18 +73,20 @@ export default function ExpensesPanel({
         </ul>
       )}
 
-      <AddExpenseForm action={addAction} />
+      <AddExpenseForm action={addAction} categories={categories} />
     </div>
   );
 }
 
 function AddExpenseForm({
   action,
+  categories,
 }: {
   action: (
     state: ExpenseFormState,
     formData: FormData,
   ) => Promise<ExpenseFormState>;
+  categories: string[];
 }) {
   const [state, formAction] = useActionState<ExpenseFormState, FormData>(action, undefined);
 
@@ -93,7 +102,7 @@ function AddExpenseForm({
           <option value="" disabled>
             Category…
           </option>
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <option key={c} value={c} className="capitalize">
               {c}
             </option>

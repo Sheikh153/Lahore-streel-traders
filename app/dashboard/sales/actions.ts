@@ -134,7 +134,10 @@ export async function updateSale(
 ): Promise<SaleFormState> {
   await verifySession();
 
-  const existing = await prisma.sale.findUnique({ where: { id } });
+  const existing = await prisma.sale.findUnique({
+    where: { id },
+    include: { expenses: true },
+  });
   if (!existing) return { error: "This sale no longer exists." };
 
   const data = readSaleFields(formData);
@@ -149,6 +152,7 @@ export async function updateSale(
   }
 
   const { weightKg, ratePerKg, date } = data;
+  const expenseTotal = existing.expenses.reduce((s, e) => s + e.amount, 0);
 
   // Check stock availability, accounting for this sale's own weight being reversed first.
   if (existing.materialId === data.materialId) {
@@ -172,7 +176,7 @@ export async function updateSale(
 
   const costPerKgAtSale = await getMaterialAvgCostPerKg(data.materialId);
   const totalAmount = weightKg * ratePerKg;
-  const profitAmount = totalAmount - weightKg * costPerKgAtSale;
+  const profitAmount = totalAmount - weightKg * costPerKgAtSale - expenseTotal;
   const vatAmount = totalAmount * (data.vatPercent / 100);
   const grandTotal = totalAmount + vatAmount;
 
@@ -308,4 +312,60 @@ export async function removeSaleAttachment(
   const result = await removeAttachmentById(id);
   revalidatePath(`/dashboard/sales/${saleId}`);
   return result;
+}
+
+// --- Expenses (labour, loading, unloading, transport) — reduce this sale's profit ---
+
+export type SaleExpenseFormState = { error?: string } | undefined;
+
+async function recomputeSaleProfit(saleId: string) {
+  const sale = await prisma.sale.findUnique({
+    where: { id: saleId },
+    include: { expenses: true },
+  });
+  if (!sale) return;
+  const expenseTotal = sale.expenses.reduce((s, e) => s + e.amount, 0);
+  const profitAmount = sale.totalAmount - sale.weightKg * sale.costPerKgAtSale - expenseTotal;
+  await prisma.sale.update({ where: { id: saleId }, data: { profitAmount } });
+}
+
+export async function createSaleExpense(
+  saleId: string,
+  _prevState: SaleExpenseFormState,
+  formData: FormData,
+): Promise<SaleExpenseFormState> {
+  await verifySession();
+
+  const category = String(formData.get("category") ?? "").trim();
+  const amount = Number(String(formData.get("amount") ?? "").trim());
+  const notes = String(formData.get("notes") ?? "").trim();
+
+  if (!category) return { error: "Please choose a category." };
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: "Amount must be a positive number." };
+  }
+
+  await prisma.expense.create({
+    data: { saleId, category, amount, notes: notes || null },
+  });
+  await recomputeSaleProfit(saleId);
+
+  revalidatePath(`/dashboard/sales/${saleId}`);
+  revalidatePath("/dashboard/records");
+}
+
+export async function deleteSaleExpense(
+  id: string,
+  _prevState: DeleteState,
+): Promise<DeleteState> {
+  await verifySession();
+
+  const expense = await prisma.expense.findUnique({ where: { id } });
+  if (!expense || !expense.saleId) return { error: "That expense no longer exists." };
+
+  await prisma.expense.delete({ where: { id } });
+  await recomputeSaleProfit(expense.saleId);
+
+  revalidatePath(`/dashboard/sales/${expense.saleId}`);
+  revalidatePath("/dashboard/records");
 }

@@ -129,25 +129,32 @@ model Sale {
   updatedAt           DateTime     @updatedAt
   payments            Payment[]
   attachments         Attachment[]
+  expenses            Expense[]
 
   @@index([contactId])
   @@index([materialId])
   @@index([date])
 }
 
-// Logistics/handling costs for a specific lot — these are what make up its
-// landed cost beyond the raw purchase rate. Not tied to a contact/payment:
-// they're recorded as incurred, not paid out through this app.
+// A cost tied to a specific purchase (adds to landed cost) or a specific
+// sale (subtracts from profit) — never both. Category vocabulary differs
+// slightly by side (purchases: freight; sales: transport) but they're the
+// same shape, so one model covers both, same as Payment/Attachment do.
+// Not tied to a contact/payment: recorded as incurred, not paid out here.
 model Expense {
-  id         String   @id @default(cuid())
-  purchaseId String
-  purchase   Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  category   String // "freight" | "loading" | "unloading" | "labour" | "other"
+  id         String    @id @default(cuid())
+  purchaseId String?
+  purchase   Purchase? @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  saleId     String?
+  sale       Sale?     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  category   String // purchases: "freight" | "loading" | "unloading" | "labour" | "other"
+  // sales: "labour" | "loading" | "unloading" | "transport" | "other"
   amount     Float
   notes      String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
 
   @@index([purchaseId])
+  @@index([saleId])
 }
 
 // General business overhead — rent, utilities, salaries, etc. Not tied to

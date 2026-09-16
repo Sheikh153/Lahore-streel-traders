@@ -255,7 +255,7 @@ export async function deleteExpense(
   await verifySession();
 
   const expense = await prisma.expense.findUnique({ where: { id } });
-  if (!expense) return { error: "That expense no longer exists." };
+  if (!expense || !expense.purchaseId) return { error: "That expense no longer exists." };
 
   await prisma.expense.delete({ where: { id } });
   await recomputeLandedCost(expense.purchaseId);

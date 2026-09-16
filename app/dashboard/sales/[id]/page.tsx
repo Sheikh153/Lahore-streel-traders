@@ -5,8 +5,18 @@ import { verifySession } from "@/app/lib/dal";
 import { formatCurrency, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
 import PaymentsPanel from "@/app/dashboard/_components/PaymentsPanel";
 import AttachmentsPanel from "@/app/dashboard/_components/AttachmentsPanel";
+import ExpensesPanel from "@/app/dashboard/_components/ExpensesPanel";
 import { getSaleById } from "../_lib/queries";
-import { addSalePayment, deleteSalePayment, addSaleAttachment, removeSaleAttachment } from "../actions";
+import {
+  addSalePayment,
+  deleteSalePayment,
+  addSaleAttachment,
+  removeSaleAttachment,
+  createSaleExpense,
+  deleteSaleExpense,
+} from "../actions";
+
+const SALE_EXPENSE_CATEGORIES = ["labour", "loading", "unloading", "transport", "other"];
 
 export const metadata: Metadata = { title: "Sale detail" };
 
@@ -85,6 +95,14 @@ export default async function SaleDetailPage({
         <InfoField label="Length" value={sale.lengthFt !== null ? `${formatNumber(sale.lengthFt)} ft` : "—"} />
         <InfoField label="Notes" value={sale.notes ?? "—"} />
       </div>
+
+      <ExpensesPanel
+        expenses={sale.expenses}
+        addAction={createSaleExpense.bind(null, sale.id)}
+        deleteAction={deleteSaleExpense}
+        categories={SALE_EXPENSE_CATEGORIES}
+        heading="Expenses (labour, loading, unloading, transport…)"
+      />
 
       <PaymentsPanel
         payments={sale.payments}

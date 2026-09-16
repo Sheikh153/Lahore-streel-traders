@@ -14,7 +14,7 @@ import {
   createExpense,
   deleteExpense,
 } from "../actions";
-import ExpensesPanel from "../_components/ExpensesPanel";
+import ExpensesPanel from "@/app/dashboard/_components/ExpensesPanel";
 
 export const metadata: Metadata = { title: "Purchase detail" };
 
