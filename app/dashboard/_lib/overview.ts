@@ -81,6 +81,11 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
 
   const avgCostMap = await getMaterialAvgCostPerKgMap(materials.map((m) => m.id));
   const stockValue = materials.reduce((s, m) => s + m.stockKg * (avgCostMap.get(m.id) ?? 0), 0);
+  const stockOnHandKg = materials.reduce((s, m) => s + m.stockKg, 0);
+  // Bought minus sold this month — no "vs last month" delta shown: as a
+  // signed net figure, a percent change against last month's net (which can
+  // itself be positive, negative, or zero) reads as noise rather than signal.
+  const netStockChangeThis = boughtThis - soldThis;
 
   // Receivables/payables use the amount actually owed — grandTotal (incl.
   // VAT) for sales, since that's the real cash the buyer owes.
@@ -110,6 +115,11 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
       upIsGood: true,
     },
     {
+      label: "Stock on hand",
+      value: `${stockOnHandKg.toLocaleString("en-US")} kg`,
+      upIsGood: true,
+    },
+    {
       label: "Receivables",
       value: `Rs ${Math.round(receivables).toLocaleString("en-US")}`,
       upIsGood: false,
@@ -129,6 +139,11 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
       label: "Weight sold this month",
       value: `${soldThis.toLocaleString("en-US")} kg`,
       deltaPercent: percentDelta(soldThis, soldLast),
+      upIsGood: true,
+    },
+    {
+      label: "Net stock change this month",
+      value: `${netStockChangeThis > 0 ? "+" : ""}${netStockChangeThis.toLocaleString("en-US")} kg`,
       upIsGood: true,
     },
   ];
