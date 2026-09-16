@@ -70,13 +70,13 @@ export default async function InvoicePage({
                 Weighbridge weight: {formatNumber(sale.weighbridgeWeightKg)} kg
               </p>
             )}
-            {(sale.thicknessMm !== null || sale.heightMm !== null || sale.lengthMm !== null) && (
+            {(sale.thicknessMm !== null || sale.heightFt !== null || sale.lengthFt !== null) && (
               <p className="text-sm text-slate-600">
                 Dimensions:{" "}
                 {[
                   sale.thicknessMm !== null ? `${formatNumber(sale.thicknessMm)}mm (T)` : null,
-                  sale.heightMm !== null ? `${formatNumber(sale.heightMm)}mm (H)` : null,
-                  sale.lengthMm !== null ? `${formatNumber(sale.lengthMm)}mm (L)` : null,
+                  sale.heightFt !== null ? `${formatNumber(sale.heightFt)}ft (H)` : null,
+                  sale.lengthFt !== null ? `${formatNumber(sale.lengthFt)}ft (L)` : null,
                 ]
                   .filter(Boolean)
                   .join(" × ")}

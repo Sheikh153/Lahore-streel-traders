@@ -49,8 +49,8 @@ export default async function EditPurchasePage({
           biltyNumber: purchase.biltyNumber,
           receiptNumber: purchase.receiptNumber,
           thicknessMm: purchase.thicknessMm,
-          heightMm: purchase.heightMm,
-          lengthMm: purchase.lengthMm,
+          heightFt: purchase.heightFt,
+          lengthFt: purchase.lengthFt,
           notes: purchase.notes,
         }}
         submitLabel="Save changes"

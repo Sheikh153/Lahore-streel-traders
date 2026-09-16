@@ -81,8 +81,8 @@ export default async function SaleDetailPage({
         <InfoField label="Bilty #" value={sale.biltyNumber ?? "—"} />
         <InfoField label="Receipt # (buyer)" value={sale.receiptNumber ?? "—"} />
         <InfoField label="Thickness" value={sale.thicknessMm !== null ? `${formatNumber(sale.thicknessMm)} mm` : "—"} />
-        <InfoField label="Height" value={sale.heightMm !== null ? `${formatNumber(sale.heightMm)} mm` : "—"} />
-        <InfoField label="Length" value={sale.lengthMm !== null ? `${formatNumber(sale.lengthMm)} mm` : "—"} />
+        <InfoField label="Height" value={sale.heightFt !== null ? `${formatNumber(sale.heightFt)} ft` : "—"} />
+        <InfoField label="Length" value={sale.lengthFt !== null ? `${formatNumber(sale.lengthFt)} ft` : "—"} />
         <InfoField label="Notes" value={sale.notes ?? "—"} />
       </div>
 

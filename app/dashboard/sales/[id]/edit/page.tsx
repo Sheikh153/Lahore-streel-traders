@@ -50,8 +50,8 @@ export default async function EditSalePage({
           biltyNumber: sale.biltyNumber,
           receiptNumber: sale.receiptNumber,
           thicknessMm: sale.thicknessMm,
-          heightMm: sale.heightMm,
-          lengthMm: sale.lengthMm,
+          heightFt: sale.heightFt,
+          lengthFt: sale.lengthFt,
           notes: sale.notes,
         }}
         submitLabel="Save changes"

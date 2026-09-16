@@ -82,8 +82,8 @@ export default async function PurchaseDetailPage({
         <InfoField label="Receipt # (supplier)" value={purchase.receiptNumber ?? "—"} />
         <InfoField label="Landed total cost" value={formatCurrency(landedTotal)} />
         <InfoField label="Thickness" value={purchase.thicknessMm !== null ? `${formatNumber(purchase.thicknessMm)} mm` : "—"} />
-        <InfoField label="Height" value={purchase.heightMm !== null ? `${formatNumber(purchase.heightMm)} mm` : "—"} />
-        <InfoField label="Length" value={purchase.lengthMm !== null ? `${formatNumber(purchase.lengthMm)} mm` : "—"} />
+        <InfoField label="Height" value={purchase.heightFt !== null ? `${formatNumber(purchase.heightFt)} ft` : "—"} />
+        <InfoField label="Length" value={purchase.lengthFt !== null ? `${formatNumber(purchase.lengthFt)} ft` : "—"} />
         <InfoField label="Notes" value={purchase.notes ?? "—"} />
       </div>
 

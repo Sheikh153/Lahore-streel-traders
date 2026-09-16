@@ -49,8 +49,8 @@ function readPurchaseFields(formData: FormData) {
     biltyNumber: String(formData.get("biltyNumber") ?? "").trim() || null,
     receiptNumber: String(formData.get("receiptNumber") ?? "").trim() || null,
     thicknessMm: parseOptionalNumber(formData.get("thicknessMm")),
-    heightMm: parseOptionalNumber(formData.get("heightMm")),
-    lengthMm: parseOptionalNumber(formData.get("lengthMm")),
+    heightFt: parseOptionalNumber(formData.get("heightFt")),
+    lengthFt: parseOptionalNumber(formData.get("lengthFt")),
     notes: String(formData.get("notes") ?? "").trim() || null,
   };
 }
@@ -91,8 +91,8 @@ export async function createPurchase(
         biltyNumber: data.biltyNumber,
         receiptNumber: data.receiptNumber,
         thicknessMm: data.thicknessMm,
-        heightMm: data.heightMm,
-        lengthMm: data.lengthMm,
+        heightFt: data.heightFt,
+        lengthFt: data.lengthFt,
         notes: data.notes,
       },
     });
@@ -152,8 +152,8 @@ export async function updatePurchase(
         biltyNumber: data.biltyNumber,
         receiptNumber: data.receiptNumber,
         thicknessMm: data.thicknessMm,
-        heightMm: data.heightMm,
-        lengthMm: data.lengthMm,
+        heightFt: data.heightFt,
+        lengthFt: data.lengthFt,
         notes: data.notes,
       },
     });

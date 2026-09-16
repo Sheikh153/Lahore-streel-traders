@@ -33,8 +33,8 @@ type SaleFormProps = {
     biltyNumber: string | null;
     receiptNumber: string | null;
     thicknessMm: number | null;
-    heightMm: number | null;
-    lengthMm: number | null;
+    heightFt: number | null;
+    lengthFt: number | null;
     notes: string | null;
   };
   submitLabel: string;
@@ -245,18 +245,18 @@ export default function SaleForm({
           defaultValue={defaultValues?.thicknessMm?.toString() ?? ""}
         />
         <Field
-          label="Height (mm)"
-          name="heightMm"
+          label="Height (ft)"
+          name="heightFt"
           type="number"
           step="0.01"
-          defaultValue={defaultValues?.heightMm?.toString() ?? ""}
+          defaultValue={defaultValues?.heightFt?.toString() ?? ""}
         />
         <Field
-          label="Length (mm)"
-          name="lengthMm"
+          label="Length (ft)"
+          name="lengthFt"
           type="number"
           step="0.01"
-          defaultValue={defaultValues?.lengthMm?.toString() ?? ""}
+          defaultValue={defaultValues?.lengthFt?.toString() ?? ""}
         />
       </div>
 
