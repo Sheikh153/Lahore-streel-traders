@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/app/lib/dal";
-import { formatCurrency, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
+import { formatCurrency, formatCurrencyPerKg, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
 import PaymentsPanel from "@/app/dashboard/_components/PaymentsPanel";
 import AttachmentsPanel from "@/app/dashboard/_components/AttachmentsPanel";
 import { getPurchaseById } from "../_lib/queries";
@@ -70,7 +70,7 @@ export default async function PurchaseDetailPage({
         <SummaryTile label="Purchase total" value={formatCurrency(purchase.totalAmount)} />
         <SummaryTile
           label="Landed cost/kg"
-          value={`${formatCurrency(purchase.landedCostPerKg)}`}
+          value={formatCurrencyPerKg(purchase.landedCostPerKg)}
           hint={`incl. ${formatCurrency(expenseTotal)} expenses`}
         />
       </div>

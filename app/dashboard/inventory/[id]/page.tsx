@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/app/lib/dal";
-import { formatCurrency, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
+import { formatCurrencyPerKg, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
 import { getMaterialById } from "../_lib/queries";
 import { getLotsWithRemaining } from "@/app/dashboard/_lib/lots";
 
@@ -95,7 +95,7 @@ export default async function MaterialLotsPage({
                       {formatNumber(l.remainingKg)} {material.unit}
                     </td>
                     <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                      {formatCurrency(l.landedCostPerKg)}
+                      {formatCurrencyPerKg(l.landedCostPerKg)}
                     </td>
                     <td className="px-5 py-3">
                       <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">

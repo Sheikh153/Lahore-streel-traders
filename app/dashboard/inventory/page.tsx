@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { verifySession } from "@/app/lib/dal";
 import { STATUS } from "@/app/dashboard/_lib/colors";
-import { formatCurrency, formatNumber } from "@/app/dashboard/_lib/format";
+import { formatCurrency, formatCurrencyPerKg, formatNumber } from "@/app/dashboard/_lib/format";
 import { getMaterialAvgCostPerKgMap } from "@/app/dashboard/_lib/costing";
 import DeleteButton from "@/app/dashboard/_components/DeleteButton";
 import { getMaterials, getMaterialWeightTotalsMap } from "./_lib/queries";
@@ -115,7 +115,7 @@ export default async function InventoryPage({
                         {formatNumber(material.stockKg)} {material.unit}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-slate-600 dark:text-slate-300">
-                        {formatCurrency(avgCost)}
+                        {formatCurrencyPerKg(avgCost)}
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums font-medium text-slate-900 dark:text-slate-50">
                         {formatCurrency(stockValue)}

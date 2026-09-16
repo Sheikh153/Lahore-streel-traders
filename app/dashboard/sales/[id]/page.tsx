@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/app/lib/dal";
-import { formatCurrency, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
+import { formatCurrency, formatCurrencyPerKg, formatDateLong, formatNumber } from "@/app/dashboard/_lib/format";
 import PaymentsPanel from "@/app/dashboard/_components/PaymentsPanel";
 import AttachmentsPanel from "@/app/dashboard/_components/AttachmentsPanel";
 import ExpensesPanel from "@/app/dashboard/_components/ExpensesPanel";
@@ -96,7 +96,7 @@ export default async function SaleDetailPage({
         <InfoField label="Rate" value={`${formatCurrency(sale.ratePerKg)}/${sale.material.unit}`} />
         <InfoField label="VAT" value={`${sale.vatPercent}% (${formatCurrency(sale.vatAmount)})`} />
         <InfoField label="Margin" value={`${margin.toFixed(1)}%`} />
-        <InfoField label="Cost/kg at sale (this lot)" value={formatCurrency(sale.costPerKgAtSale)} />
+        <InfoField label="Cost/kg at sale (this lot)" value={formatCurrencyPerKg(sale.costPerKgAtSale)} />
         <InfoField label="Profit/kg" value={formatCurrency(profitPerKg)} />
         <InfoField label="Weighbridge weight" value={sale.weighbridgeWeightKg !== null ? `${formatNumber(sale.weighbridgeWeightKg)} kg` : "—"} />
         <InfoField
