@@ -24,7 +24,7 @@ export async function getRecords(search?: string, filter: RecordFilter = "all") 
             ? { OR: [{ lotId: { contains: search } }, ...(contactMaterialWhere?.OR ?? [])] }
             : undefined,
           include: { contact: true, material: true, payments: { select: { amount: true } } },
-          orderBy: { createdAt: "desc" },
+          orderBy: { date: "desc" },
         }),
     filter === "purchase"
       ? []
@@ -33,7 +33,7 @@ export async function getRecords(search?: string, filter: RecordFilter = "all") 
             ? { OR: [{ saleRef: { contains: search } }, ...(contactMaterialWhere?.OR ?? [])] }
             : undefined,
           include: { contact: true, material: true, payments: { select: { amount: true } } },
-          orderBy: { createdAt: "desc" },
+          orderBy: { date: "desc" },
         }),
   ]);
 
@@ -42,7 +42,7 @@ export async function getRecords(search?: string, filter: RecordFilter = "all") 
       id: p.id,
       type: "purchase" as const,
       ref: p.lotId,
-      date: p.createdAt,
+      date: p.date,
       contact: p.contact.name,
       material: p.material.name,
       weightKg: p.weightKg,
@@ -53,7 +53,7 @@ export async function getRecords(search?: string, filter: RecordFilter = "all") 
       id: s.id,
       type: "sale" as const,
       ref: s.saleRef,
-      date: s.createdAt,
+      date: s.date,
       contact: s.contact.name,
       material: s.material.name,
       weightKg: s.weightKg,

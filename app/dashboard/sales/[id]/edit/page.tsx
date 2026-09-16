@@ -41,6 +41,7 @@ export default async function EditSalePage({
         defaultValues={{
           contactId: sale.contactId,
           materialId: sale.materialId,
+          date: sale.date.toISOString().slice(0, 10),
           weightKg: sale.weightKg,
           ratePerKg: sale.ratePerKg,
           vatPercent: sale.vatPercent,

@@ -44,7 +44,7 @@ export default async function InvoicePage({
           <div className="text-right">
             <h2 className="text-2xl font-bold uppercase tracking-wide text-slate-800">Invoice</h2>
             <p className="mt-1 text-sm text-slate-600">{sale.saleRef}</p>
-            <p className="text-sm text-slate-600">{formatDateLong(sale.createdAt)}</p>
+            <p className="text-sm text-slate-600">{formatDateLong(sale.date)}</p>
           </div>
         </div>
 

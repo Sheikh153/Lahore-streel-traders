@@ -22,12 +22,12 @@ export async function getNotifications(): Promise<Notification[]> {
     prisma.material.findMany({ where: { lowStockKg: { not: null } } }),
     prisma.purchase.findMany({
       include: { contact: true, payments: { select: { amount: true } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
       take: 50,
     }),
     prisma.sale.findMany({
       include: { contact: true, payments: { select: { amount: true } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
       take: 50,
     }),
   ]);
@@ -55,7 +55,7 @@ export async function getNotifications(): Promise<Notification[]> {
         type: "unpaid",
         message: `${p.lotId} from ${p.contact.name} is ${status} — ${formatCurrency(p.totalAmount - paid)} owed`,
         href: `/dashboard/purchases/${p.id}`,
-        date: p.createdAt,
+        date: p.date,
       });
     }
   }
@@ -69,7 +69,7 @@ export async function getNotifications(): Promise<Notification[]> {
         type: "unpaid",
         message: `${s.saleRef} to ${s.contact.name} is ${status} — ${formatCurrency(s.grandTotal - paid)} due`,
         href: `/dashboard/sales/${s.id}`,
-        date: s.createdAt,
+        date: s.date,
       });
     }
   }

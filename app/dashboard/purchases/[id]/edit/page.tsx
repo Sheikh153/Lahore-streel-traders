@@ -41,6 +41,7 @@ export default async function EditPurchasePage({
         defaultValues={{
           contactId: purchase.contactId,
           materialId: purchase.materialId,
+          date: purchase.date.toISOString().slice(0, 10),
           weightKg: purchase.weightKg,
           ratePerKg: purchase.ratePerKg,
           weighbridgeWeightKg: purchase.weighbridgeWeightKg,

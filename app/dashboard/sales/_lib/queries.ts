@@ -18,7 +18,7 @@ export function getSales(search?: string) {
       material: true,
       payments: { select: { amount: true } },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { date: "desc" },
   });
 }
 

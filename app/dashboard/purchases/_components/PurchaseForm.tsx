@@ -19,6 +19,7 @@ type PurchaseFormProps = {
   defaultValues?: {
     contactId: string;
     materialId: string;
+    date: string; // "YYYY-MM-DD"
     weightKg: number;
     ratePerKg: number;
     weighbridgeWeightKg: number | null;
@@ -45,6 +46,7 @@ export default function PurchaseForm({
     undefined,
   );
 
+  const today = new Date().toISOString().slice(0, 10);
   const [materialId, setMaterialId] = useState(
     defaultValues?.materialId ?? materials[0]?.id ?? "",
   );
@@ -110,7 +112,7 @@ export default function PurchaseForm({
       action={formAction}
       className="flex flex-col gap-5 rounded-xl border border-slate-200 bg-white p-6 dark:border-slate-800 dark:bg-slate-900"
     >
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <SelectField
           label="Supplier"
           name="contactId"
@@ -137,6 +139,13 @@ export default function PurchaseForm({
             ))}
           </select>
         </div>
+        <Field
+          label="Date"
+          name="date"
+          type="date"
+          required
+          defaultValue={defaultValues?.date ?? today}
+        />
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">

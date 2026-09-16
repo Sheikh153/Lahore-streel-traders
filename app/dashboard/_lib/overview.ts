@@ -42,10 +42,10 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
     companyExpensesThisMonth,
     companyExpensesLastMonth,
   ] = await Promise.all([
-    prisma.sale.findMany({ where: { createdAt: { gte: thisMonthStart, lt: nextMonthStart } } }),
-    prisma.sale.findMany({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
-    prisma.purchase.findMany({ where: { createdAt: { gte: thisMonthStart, lt: nextMonthStart } } }),
-    prisma.purchase.findMany({ where: { createdAt: { gte: lastMonthStart, lt: thisMonthStart } } }),
+    prisma.sale.findMany({ where: { date: { gte: thisMonthStart, lt: nextMonthStart } } }),
+    prisma.sale.findMany({ where: { date: { gte: lastMonthStart, lt: thisMonthStart } } }),
+    prisma.purchase.findMany({ where: { date: { gte: thisMonthStart, lt: nextMonthStart } } }),
+    prisma.purchase.findMany({ where: { date: { gte: lastMonthStart, lt: thisMonthStart } } }),
     prisma.sale.findMany({ select: { totalAmount: true, grandTotal: true } }),
     prisma.purchase.findMany({ select: { totalAmount: true } }),
     prisma.payment.findMany({ select: { direction: true, amount: true } }),
@@ -145,12 +145,12 @@ async function dailyWeightTrend(
   const rows =
     model === "purchase"
       ? await prisma.purchase.findMany({
-          where: { createdAt: { gte: since } },
-          select: { createdAt: true, weightKg: true },
+          where: { date: { gte: since } },
+          select: { date: true, weightKg: true },
         })
       : await prisma.sale.findMany({
-          where: { createdAt: { gte: since } },
-          select: { createdAt: true, weightKg: true },
+          where: { date: { gte: since } },
+          select: { date: true, weightKg: true },
         });
 
   const byDay = new Map<string, number>();
@@ -160,7 +160,7 @@ async function dailyWeightTrend(
     byDay.set(d.toISOString().slice(0, 10), 0);
   }
   for (const row of rows) {
-    const key = row.createdAt.toISOString().slice(0, 10);
+    const key = row.date.toISOString().slice(0, 10);
     byDay.set(key, (byDay.get(key) ?? 0) + row.weightKg);
   }
 
@@ -194,12 +194,12 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivityItem[]
   const [purchases, sales] = await Promise.all([
     prisma.purchase.findMany({
       include: { contact: true, material: true, payments: { select: { amount: true } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
       take: limit,
     }),
     prisma.sale.findMany({
       include: { contact: true, material: true, payments: { select: { amount: true } } },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
       take: limit,
     }),
   ]);
@@ -209,7 +209,7 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivityItem[]
       id: p.id,
       type: "purchase" as const,
       ref: p.lotId,
-      date: p.createdAt,
+      date: p.date,
       contact: p.contact.name,
       material: p.material.name,
       weightKg: p.weightKg,
@@ -220,7 +220,7 @@ export async function getRecentActivity(limit = 8): Promise<RecentActivityItem[]
       id: s.id,
       type: "sale" as const,
       ref: s.saleRef,
-      date: s.createdAt,
+      date: s.date,
       contact: s.contact.name,
       material: s.material.name,
       weightKg: s.weightKg,

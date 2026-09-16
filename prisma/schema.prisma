@@ -86,6 +86,7 @@ model Purchase {
   heightMm            Float?
   lengthMm            Float?
   notes               String?
+  date                DateTime     @default(now()) // when the purchase actually happened — editable, unlike createdAt
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   expenses            Expense[]
@@ -94,6 +95,7 @@ model Purchase {
 
   @@index([contactId])
   @@index([materialId])
+  @@index([date])
 }
 
 // A sale = stock out to a buyer, drawn from the material's blended average
@@ -122,6 +124,7 @@ model Sale {
   heightMm            Float?
   lengthMm            Float?
   notes               String?
+  date                DateTime     @default(now()) // when the sale actually happened — editable, unlike createdAt
   createdAt           DateTime     @default(now())
   updatedAt           DateTime     @updatedAt
   payments            Payment[]
@@ -129,6 +132,7 @@ model Sale {
 
   @@index([contactId])
   @@index([materialId])
+  @@index([date])
 }
 
 // Logistics/handling costs for a specific lot — these are what make up its

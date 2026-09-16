@@ -15,12 +15,12 @@ export async function getContactLedger(contactId: string) {
     prisma.purchase.findMany({
       where: { contactId },
       include: { material: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
     }),
     prisma.sale.findMany({
       where: { contactId },
       include: { material: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: { date: "desc" },
     }),
     prisma.payment.findMany({
       where: { contactId },
@@ -45,14 +45,14 @@ export async function getContactLedger(contactId: string) {
     ...purchases.map((p) => ({
       id: p.id,
       type: "purchase" as const,
-      date: p.createdAt,
+      date: p.date,
       label: `${p.lotId} — ${p.weightKg}kg ${p.material.name} bought`,
       amount: p.totalAmount,
     })),
     ...sales.map((s) => ({
       id: s.id,
       type: "sale" as const,
-      date: s.createdAt,
+      date: s.date,
       label: `${s.saleRef} — ${s.weightKg}kg ${s.material.name} sold`,
       amount: s.grandTotal,
     })),

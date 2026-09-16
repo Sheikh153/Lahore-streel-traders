@@ -32,7 +32,7 @@ export default async function SaleDetailPage({
             {sale.saleRef}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {formatDateLong(sale.createdAt)} ·{" "}
+            {formatDateLong(sale.date)} ·{" "}
             <Link href={`/dashboard/contacts/${sale.contactId}`} className="hover:text-blue-600 dark:hover:text-blue-400">
               {sale.contact.name}
             </Link>{" "}

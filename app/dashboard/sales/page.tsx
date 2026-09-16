@@ -89,7 +89,7 @@ export default async function SalesPage({
                         </Link>
                       </td>
                       <td className="whitespace-nowrap px-5 py-3 tabular-nums text-slate-500 dark:text-slate-400">
-                        {formatDate(sale.createdAt)}
+                        {formatDate(sale.date)}
                       </td>
                       <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{sale.contact.name}</td>
                       <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{sale.material.name}</td>

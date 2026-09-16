@@ -29,10 +29,19 @@ function parseOptionalNumber(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(num) ? num : null;
 }
 
+function parseDate(value: FormDataEntryValue | null): Date | null {
+  if (value === null) return null;
+  const trimmed = String(value).trim();
+  if (!trimmed) return null;
+  const date = new Date(trimmed);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
 function readPurchaseFields(formData: FormData) {
   return {
     contactId: String(formData.get("contactId") ?? "").trim(),
     materialId: String(formData.get("materialId") ?? "").trim(),
+    date: parseDate(formData.get("date")),
     weightKg: parsePositiveNumber(formData.get("weightKg")),
     ratePerKg: parsePositiveNumber(formData.get("ratePerKg")),
     weighbridgeWeightKg: parseOptionalNumber(formData.get("weighbridgeWeightKg")),
@@ -55,6 +64,7 @@ export async function createPurchase(
   const data = readPurchaseFields(formData);
   if (!data.contactId) return { error: "Please select a supplier." };
   if (!data.materialId) return { error: "Please select a material." };
+  if (!data.date) return { error: "Please enter a valid date." };
   if (data.weightKg === null || data.weightKg <= 0) {
     return { error: "Weight must be a positive number." };
   }
@@ -62,7 +72,7 @@ export async function createPurchase(
     return { error: "Rate must be a valid, non-negative number." };
   }
 
-  const { weightKg, ratePerKg } = data;
+  const { weightKg, ratePerKg, date } = data;
   const lotId = await generateLotId();
 
   const purchase = await prisma.$transaction(async (tx) => {
@@ -71,6 +81,7 @@ export async function createPurchase(
         lotId,
         contactId: data.contactId,
         materialId: data.materialId,
+        date,
         weightKg,
         ratePerKg,
         totalAmount: weightKg * ratePerKg,
@@ -113,6 +124,7 @@ export async function updatePurchase(
   const data = readPurchaseFields(formData);
   if (!data.contactId) return { error: "Please select a supplier." };
   if (!data.materialId) return { error: "Please select a material." };
+  if (!data.date) return { error: "Please enter a valid date." };
   if (data.weightKg === null || data.weightKg <= 0) {
     return { error: "Weight must be a positive number." };
   }
@@ -120,7 +132,7 @@ export async function updatePurchase(
     return { error: "Rate must be a valid, non-negative number." };
   }
 
-  const { weightKg, ratePerKg } = data;
+  const { weightKg, ratePerKg, date } = data;
   const expenseTotal = existing.expenses.reduce((s, e) => s + e.amount, 0);
   const landedCostPerKg = weightKg > 0 ? (weightKg * ratePerKg + expenseTotal) / weightKg : ratePerKg;
 
@@ -130,6 +142,7 @@ export async function updatePurchase(
       data: {
         contactId: data.contactId,
         materialId: data.materialId,
+        date,
         weightKg,
         ratePerKg,
         totalAmount: weightKg * ratePerKg,

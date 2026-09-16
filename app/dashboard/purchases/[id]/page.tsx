@@ -42,7 +42,7 @@ export default async function PurchaseDetailPage({
             {purchase.lotId}
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            {formatDateLong(purchase.createdAt)} ·{" "}
+            {formatDateLong(purchase.date)} ·{" "}
             <Link
               href={`/dashboard/contacts/${purchase.contactId}`}
               className="hover:text-blue-600 dark:hover:text-blue-400"
