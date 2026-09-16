@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifySession } from "@/app/lib/dal";
@@ -77,10 +78,25 @@ export default async function SaleDetailPage({
       </div>
 
       <div className="grid grid-cols-1 gap-4 rounded-xl border border-slate-200 bg-white p-5 sm:grid-cols-3 dark:border-slate-800 dark:bg-slate-900">
+        <InfoField
+          label="Lot"
+          value={
+            sale.purchase ? (
+              <Link
+                href={`/dashboard/purchases/${sale.purchaseId}`}
+                className="text-blue-600 hover:text-blue-500 dark:text-blue-400"
+              >
+                {sale.purchase.lotId}
+              </Link>
+            ) : (
+              "— (recorded before lot tracking)"
+            )
+          }
+        />
         <InfoField label="Rate" value={`${formatCurrency(sale.ratePerKg)}/${sale.material.unit}`} />
         <InfoField label="VAT" value={`${sale.vatPercent}% (${formatCurrency(sale.vatAmount)})`} />
         <InfoField label="Margin" value={`${margin.toFixed(1)}%`} />
-        <InfoField label="Cost/kg at sale (avg)" value={formatCurrency(sale.costPerKgAtSale)} />
+        <InfoField label="Cost/kg at sale (this lot)" value={formatCurrency(sale.costPerKgAtSale)} />
         <InfoField label="Profit/kg" value={formatCurrency(profitPerKg)} />
         <InfoField label="Weighbridge weight" value={sale.weighbridgeWeightKg !== null ? `${formatNumber(sale.weighbridgeWeightKg)} kg` : "—"} />
         <InfoField
@@ -148,7 +164,7 @@ function SummaryTile({
   );
 }
 
-function InfoField({ label, value }: { label: string; value: string }) {
+function InfoField({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div>
       <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>

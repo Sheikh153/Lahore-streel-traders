@@ -15,6 +15,7 @@ import {
   deleteExpense,
 } from "../actions";
 import ExpensesPanel from "@/app/dashboard/_components/ExpensesPanel";
+import { getLotRemaining } from "@/app/dashboard/_lib/lots";
 
 export const metadata: Metadata = { title: "Purchase detail" };
 
@@ -26,6 +27,9 @@ export default async function PurchaseDetailPage({
 
   const purchase = await getPurchaseById(id);
   if (!purchase) notFound();
+
+  const lot = await getLotRemaining(id);
+  const soldKg = lot ? lot.weightKg - lot.remainingKg : 0;
 
   const weightDifference =
     purchase.weighbridgeWeightKg !== null
@@ -68,6 +72,14 @@ export default async function PurchaseDetailPage({
           label="Landed cost/kg"
           value={`${formatCurrency(purchase.landedCostPerKg)}`}
           hint={`incl. ${formatCurrency(expenseTotal)} expenses`}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+        <SummaryTile label="Sold from this lot" value={`${formatNumber(soldKg)} ${purchase.material.unit}`} />
+        <SummaryTile
+          label="Remaining in this lot"
+          value={`${formatNumber(lot?.remainingKg ?? purchase.weightKg)} ${purchase.material.unit}`}
         />
       </div>
 

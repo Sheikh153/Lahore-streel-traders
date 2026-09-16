@@ -6,7 +6,7 @@ import { prisma } from "@/app/lib/db";
 import { verifySession } from "@/app/lib/dal";
 import { isForeignKeyError } from "@/app/lib/prisma-errors";
 import { generateSaleRef } from "@/app/dashboard/_lib/reference";
-import { getMaterialAvgCostPerKg } from "@/app/dashboard/_lib/costing";
+import { getLotRemaining } from "@/app/dashboard/_lib/lots";
 import { recordPaymentFor, removePaymentById, type PaymentActionState } from "@/app/dashboard/_lib/payments";
 import { saveAttachmentFor, removeAttachmentById, type AttachmentActionState } from "@/app/dashboard/_lib/attachments";
 import type { DeleteState } from "@/app/dashboard/_components/DeleteButton";
@@ -40,7 +40,11 @@ function parseDate(value: FormDataEntryValue | null): Date | null {
 function readSaleFields(formData: FormData) {
   return {
     contactId: String(formData.get("contactId") ?? "").trim(),
-    materialId: String(formData.get("materialId") ?? "").trim(),
+    // materialId is intentionally not read here — purchaseId (the chosen
+    // lot) is the source of truth for which material this sale draws
+    // from, so a mismatched/stale materialId in the submitted form can't
+    // silently disagree with the actual lot.
+    purchaseId: String(formData.get("purchaseId") ?? "").trim(),
     date: parseDate(formData.get("date")),
     weightKg: parsePositiveNumber(formData.get("weightKg")),
     ratePerKg: parsePositiveNumber(formData.get("ratePerKg")),
@@ -64,7 +68,7 @@ export async function createSale(
 
   const data = readSaleFields(formData);
   if (!data.contactId) return { error: "Please select a buyer." };
-  if (!data.materialId) return { error: "Please select a material." };
+  if (!data.purchaseId) return { error: "Please select which lot this sale comes from." };
   if (!data.date) return { error: "Please enter a valid date." };
   if (data.weightKg === null || data.weightKg <= 0) {
     return { error: "Weight must be a positive number." };
@@ -75,15 +79,15 @@ export async function createSale(
 
   const { weightKg, ratePerKg, date } = data;
 
-  const material = await prisma.material.findUnique({ where: { id: data.materialId } });
-  if (!material) return { error: "That material no longer exists." };
-  if (weightKg > material.stockKg) {
-    return {
-      error: `Only ${material.stockKg} ${material.unit} of ${material.name} is in stock.`,
-    };
+  // The chosen lot is never blended with any other lot — its own weight
+  // and its own landed cost, not a material-wide average.
+  const lot = await getLotRemaining(data.purchaseId);
+  if (!lot) return { error: "That lot no longer exists." };
+  if (weightKg > lot.remainingKg) {
+    return { error: `Only ${lot.remainingKg.toFixed(2)} kg is left in that lot.` };
   }
 
-  const costPerKgAtSale = await getMaterialAvgCostPerKg(data.materialId);
+  const costPerKgAtSale = lot.landedCostPerKg;
   const totalAmount = weightKg * ratePerKg;
   const profitAmount = totalAmount - weightKg * costPerKgAtSale;
   const vatAmount = totalAmount * (data.vatPercent / 100);
@@ -95,7 +99,8 @@ export async function createSale(
       data: {
         saleRef,
         contactId: data.contactId,
-        materialId: data.materialId,
+        materialId: lot.materialId,
+        purchaseId: data.purchaseId,
         date,
         weightKg,
         ratePerKg,
@@ -116,7 +121,7 @@ export async function createSale(
       },
     });
     await tx.material.update({
-      where: { id: data.materialId },
+      where: { id: lot.materialId },
       data: { stockKg: { decrement: weightKg } },
     });
     return created;
@@ -142,7 +147,7 @@ export async function updateSale(
 
   const data = readSaleFields(formData);
   if (!data.contactId) return { error: "Please select a buyer." };
-  if (!data.materialId) return { error: "Please select a material." };
+  if (!data.purchaseId) return { error: "Please select which lot this sale comes from." };
   if (!data.date) return { error: "Please enter a valid date." };
   if (data.weightKg === null || data.weightKg <= 0) {
     return { error: "Weight must be a positive number." };
@@ -154,27 +159,15 @@ export async function updateSale(
   const { weightKg, ratePerKg, date } = data;
   const expenseTotal = existing.expenses.reduce((s, e) => s + e.amount, 0);
 
-  // Check stock availability, accounting for this sale's own weight being reversed first.
-  if (existing.materialId === data.materialId) {
-    const material = await prisma.material.findUnique({ where: { id: data.materialId } });
-    if (!material) return { error: "That material no longer exists." };
-    const availableAfterReversal = material.stockKg + existing.weightKg;
-    if (weightKg > availableAfterReversal) {
-      return {
-        error: `Only ${availableAfterReversal} ${material.unit} of ${material.name} would be available.`,
-      };
-    }
-  } else {
-    const newMaterial = await prisma.material.findUnique({ where: { id: data.materialId } });
-    if (!newMaterial) return { error: "That material no longer exists." };
-    if (weightKg > newMaterial.stockKg) {
-      return {
-        error: `Only ${newMaterial.stockKg} ${newMaterial.unit} of ${newMaterial.name} is in stock.`,
-      };
-    }
+  // Check the target lot's remaining capacity, excluding this sale's own
+  // current weight if it's already drawing from that same lot.
+  const lot = await getLotRemaining(data.purchaseId, id);
+  if (!lot) return { error: "That lot no longer exists." };
+  if (weightKg > lot.remainingKg) {
+    return { error: `Only ${lot.remainingKg.toFixed(2)} kg is left in that lot.` };
   }
 
-  const costPerKgAtSale = await getMaterialAvgCostPerKg(data.materialId);
+  const costPerKgAtSale = lot.landedCostPerKg;
   const totalAmount = weightKg * ratePerKg;
   const profitAmount = totalAmount - weightKg * costPerKgAtSale - expenseTotal;
   const vatAmount = totalAmount * (data.vatPercent / 100);
@@ -185,7 +178,8 @@ export async function updateSale(
       where: { id },
       data: {
         contactId: data.contactId,
-        materialId: data.materialId,
+        materialId: lot.materialId,
+        purchaseId: data.purchaseId,
         date,
         weightKg,
         ratePerKg,
@@ -206,11 +200,11 @@ export async function updateSale(
       },
     });
 
-    if (existing.materialId === data.materialId) {
+    if (existing.materialId === lot.materialId) {
       const delta = weightKg - existing.weightKg;
       if (delta !== 0) {
         await tx.material.update({
-          where: { id: data.materialId },
+          where: { id: lot.materialId },
           data: { stockKg: { decrement: delta } },
         });
       }
@@ -220,7 +214,7 @@ export async function updateSale(
         data: { stockKg: { increment: existing.weightKg } },
       });
       await tx.material.update({
-        where: { id: data.materialId },
+        where: { id: lot.materialId },
         data: { stockKg: { decrement: weightKg } },
       });
     }

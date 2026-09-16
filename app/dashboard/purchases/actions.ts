@@ -7,6 +7,7 @@ import { verifySession } from "@/app/lib/dal";
 import { isForeignKeyError } from "@/app/lib/prisma-errors";
 import { generateLotId } from "@/app/dashboard/_lib/reference";
 import { computeLandedCostPerKg } from "@/app/dashboard/_lib/costing";
+import { getLotRemaining } from "@/app/dashboard/_lib/lots";
 import { recordPaymentFor, removePaymentById, type PaymentActionState } from "@/app/dashboard/_lib/payments";
 import { saveAttachmentFor, removeAttachmentById, type AttachmentActionState } from "@/app/dashboard/_lib/attachments";
 import type { DeleteState } from "@/app/dashboard/_components/DeleteButton";
@@ -117,7 +118,7 @@ export async function updatePurchase(
 
   const existing = await prisma.purchase.findUnique({
     where: { id },
-    include: { expenses: true },
+    include: { expenses: true, material: { select: { unit: true } } },
   });
   if (!existing) return { error: "This purchase no longer exists." };
 
@@ -135,6 +136,22 @@ export async function updatePurchase(
   const { weightKg, ratePerKg, date } = data;
   const expenseTotal = existing.expenses.reduce((s, e) => s + e.amount, 0);
   const landedCostPerKg = weightKg > 0 ? (weightKg * ratePerKg + expenseTotal) / weightKg : ratePerKg;
+
+  // This lot's own weight can't drop below what's already been sold from
+  // it, and its material can't change once sales are tied to it — either
+  // would retroactively misrepresent sales already drawn from this lot.
+  const lot = await getLotRemaining(id);
+  const soldFromThisLot = lot ? lot.weightKg - lot.remainingKg : 0;
+  if (soldFromThisLot > 0) {
+    if (data.materialId !== existing.materialId) {
+      return { error: "Can't change the material — sales have already been recorded against this lot." };
+    }
+    if (weightKg < soldFromThisLot) {
+      return {
+        error: `Can't reduce weight below ${soldFromThisLot} ${existing.material.unit} — that much has already been sold from this lot.`,
+      };
+    }
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.purchase.update({
@@ -204,7 +221,7 @@ export async function deletePurchase(
   } catch (error) {
     if (isForeignKeyError(error)) {
       return {
-        error: "Can't delete this lot — it has payments recorded against it. Delete those first.",
+        error: "Can't delete this lot — it has payments or sales recorded against it. Delete those first.",
       };
     }
     throw error;

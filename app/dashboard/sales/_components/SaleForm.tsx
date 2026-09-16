@@ -12,18 +12,28 @@ type Material = {
   name: string;
   unit: string;
   pricePerKg: number;
-  stockKg: number;
-  avgCostPerKg: number;
+};
+type Lot = {
+  id: string;
+  lotId: string;
+  materialId: string;
+  remainingKg: number;
+  landedCostPerKg: number;
+  date: string; // "YYYY-MM-DD", for the option label
 };
 
 type SaleFormProps = {
   action: (state: SaleFormState, formData: FormData) => Promise<SaleFormState>;
   buyers: Contact[];
   materials: Material[];
+  lots: Lot[]; // only lots with stock left — never blended across each other
   defaultVatPercent?: number;
   defaultValues?: {
     contactId: string;
     materialId: string;
+    // Absent for sales recorded before lot-tracking existed — the form
+    // falls back to that material's first available lot in that case.
+    purchaseId?: string;
     date: string; // "YYYY-MM-DD"
     weightKg: number;
     ratePerKg: number;
@@ -44,6 +54,7 @@ export default function SaleForm({
   action,
   buyers,
   materials,
+  lots,
   defaultVatPercent = 0,
   defaultValues,
   submitLabel,
@@ -53,6 +64,10 @@ export default function SaleForm({
   const today = new Date().toISOString().slice(0, 10);
   const [materialId, setMaterialId] = useState(
     defaultValues?.materialId ?? materials[0]?.id ?? "",
+  );
+  const lotsForMaterial = lots.filter((l) => l.materialId === materialId);
+  const [purchaseId, setPurchaseId] = useState(
+    defaultValues?.purchaseId ?? lotsForMaterial[0]?.id ?? "",
   );
   const [weightKg, setWeightKg] = useState(defaultValues?.weightKg?.toString() ?? "");
   const [ratePerKg, setRatePerKg] = useState(
@@ -66,19 +81,20 @@ export default function SaleForm({
   );
 
   const selectedMaterial = materials.find((m) => m.id === materialId);
+  const selectedLot = lots.find((l) => l.id === purchaseId);
 
   const preview = useMemo(() => {
     const w = Number(weightKg);
     const r = Number(ratePerKg);
     const vat = Number(vatPercent) || 0;
-    if (!selectedMaterial || !Number.isFinite(w) || !Number.isFinite(r) || w <= 0) return null;
+    if (!selectedLot || !Number.isFinite(w) || !Number.isFinite(r) || w <= 0) return null;
     const total = w * r;
     const vatAmount = total * (vat / 100);
     const grandTotal = total + vatAmount;
-    const cost = w * selectedMaterial.avgCostPerKg;
+    const cost = w * selectedLot.landedCostPerKg;
     const profit = total - cost;
     const margin = total > 0 ? (profit / total) * 100 : 0;
-    const remaining = selectedMaterial.stockKg - w;
+    const remaining = selectedLot.remainingKg - w;
     return {
       total,
       vatAmount,
@@ -88,7 +104,7 @@ export default function SaleForm({
       remaining,
       profitPerKg: w > 0 ? profit / w : 0,
     };
-  }, [weightKg, ratePerKg, vatPercent, selectedMaterial]);
+  }, [weightKg, ratePerKg, vatPercent, selectedLot]);
 
   const weightDifference = useMemo(() => {
     const w = Number(weightKg);
@@ -101,6 +117,8 @@ export default function SaleForm({
     setMaterialId(id);
     const material = materials.find((m) => m.id === id);
     if (material) setRatePerKg(material.pricePerKg.toString());
+    const firstLot = lots.find((l) => l.materialId === id);
+    setPurchaseId(firstLot?.id ?? "");
   }
 
   if (buyers.length === 0 || materials.length === 0) {
@@ -117,9 +135,9 @@ export default function SaleForm({
         )}
         {materials.length === 0 && (
           <p>
-            You need at least one material with stock first —{" "}
-            <Link href="/dashboard/inventory/new" className="font-medium text-blue-600 dark:text-blue-400">
-              add a material
+            You need at least one material with unsold stock first —{" "}
+            <Link href="/dashboard/purchases/new" className="font-medium text-blue-600 dark:text-blue-400">
+              record a purchase
             </Link>
             .
           </p>
@@ -155,11 +173,39 @@ export default function SaleForm({
           >
             {materials.map((m) => (
               <option key={m.id} value={m.id}>
-                {m.name} ({formatNumber(m.stockKg)} {m.unit} in stock)
+                {m.name}
               </option>
             ))}
           </select>
         </div>
+        <div className="flex flex-col gap-1.5">
+          <label htmlFor="purchaseId" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            Lot <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="purchaseId"
+            name="purchaseId"
+            required
+            value={purchaseId}
+            onChange={(e) => setPurchaseId(e.target.value)}
+            disabled={lotsForMaterial.length === 0}
+            className="w-full rounded-lg border border-slate-300 bg-white px-3.5 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+          >
+            {lotsForMaterial.length === 0 ? (
+              <option value="">No unsold lots for this material</option>
+            ) : (
+              lotsForMaterial.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.lotId} — {formatNumber(l.remainingKg)} {selectedMaterial?.unit ?? "kg"} left (bought{" "}
+                  {l.date})
+                </option>
+              ))
+            )}
+          </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-4">
         <Field
           label="Date"
           name="date"
@@ -167,9 +213,6 @@ export default function SaleForm({
           required
           defaultValue={defaultValues?.date ?? today}
         />
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
         <Field
           label={`Weight (${selectedMaterial?.unit ?? "kg"})`}
           name="weightKg"
@@ -214,7 +257,7 @@ export default function SaleForm({
           <PreviewStat label="Profit/kg" value={formatCurrency(preview.profitPerKg)} />
           <PreviewStat label="Margin" value={`${preview.margin.toFixed(1)}%`} />
           <PreviewStat
-            label="Remaining stock"
+            label="Remaining in lot"
             value={`${formatNumber(preview.remaining)} ${selectedMaterial?.unit ?? "kg"}`}
             emphasize={preview.remaining < 0 ? "bad" : undefined}
           />

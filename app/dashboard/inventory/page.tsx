@@ -94,8 +94,13 @@ export default async function InventoryPage({
                   const weightTotals = weightTotalsMap.get(material.id) ?? { purchased: 0, sold: 0 };
                   return (
                     <tr key={material.id} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="px-5 py-3 font-medium text-slate-900 dark:text-slate-50">
-                        {material.name}
+                      <td className="px-5 py-3 font-medium">
+                        <Link
+                          href={`/dashboard/inventory/${material.id}`}
+                          className="text-slate-900 hover:text-blue-600 dark:text-slate-50 dark:hover:text-blue-400"
+                        >
+                          {material.name}
+                        </Link>
                       </td>
                       <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
                         {material.location ?? "—"}

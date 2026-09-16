@@ -28,6 +28,7 @@ export function getSaleById(id: string) {
     include: {
       contact: true,
       material: true,
+      purchase: { select: { lotId: true } },
       expenses: { orderBy: { createdAt: "desc" } },
       payments: { orderBy: { createdAt: "desc" } },
       attachments: { orderBy: { createdAt: "desc" } },

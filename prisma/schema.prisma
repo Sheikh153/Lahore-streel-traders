@@ -92,15 +92,19 @@ model Purchase {
   expenses            Expense[]
   payments            Payment[]
   attachments         Attachment[]
+  sales               Sale[] // sales drawn specifically from this lot — see Sale.purchaseId
 
   @@index([contactId])
   @@index([materialId])
   @@index([date])
 }
 
-// A sale = stock out to a buyer, drawn from the material's blended average
-// cost at that moment (costPerKgAtSale is a snapshot so past profit figures
-// never shift retroactively when new purchases change the running average).
+// A sale = stock out to a buyer, drawn from one specific purchase lot —
+// lots are never blended together, so costPerKgAtSale is that lot's own
+// landedCostPerKg, not a material-wide average. It's still a snapshot (so
+// past profit figures never shift if the lot's cost were ever revised),
+// and purchaseId is nullable only because sales recorded before this
+// lot-tracking existed don't have one attributed.
 model Sale {
   id                  String       @id @default(cuid())
   saleRef             String       @unique
@@ -108,6 +112,8 @@ model Sale {
   contact             Contact      @relation(fields: [contactId], references: [id])
   materialId          String
   material            Material     @relation(fields: [materialId], references: [id])
+  purchaseId          String?
+  purchase            Purchase?    @relation(fields: [purchaseId], references: [id], onDelete: Restrict)
   weightKg            Float
   ratePerKg           Float
   totalAmount         Float // pre-VAT sale value — profit is computed against this
@@ -133,6 +139,7 @@ model Sale {
 
   @@index([contactId])
   @@index([materialId])
+  @@index([purchaseId])
   @@index([date])
 }
 

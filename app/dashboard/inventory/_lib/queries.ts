@@ -1,7 +1,7 @@
 import "server-only";
 
 import { prisma } from "@/app/lib/db";
-import { getMaterialAvgCostPerKgMap } from "@/app/dashboard/_lib/costing";
+import { getAvailableLotsForSale } from "@/app/dashboard/_lib/lots";
 
 export function getMaterials(search?: string) {
   return prisma.material.findMany({
@@ -21,12 +21,21 @@ export function getAllMaterialsForSelect() {
   });
 }
 
-/** For the Sale form — needs each material's current blended average cost
- * to preview profit/margin before the sale is even submitted. */
-export async function getMaterialsForSaleSelect() {
-  const materials = await getAllMaterialsForSelect();
-  const avgCostMap = await getMaterialAvgCostPerKgMap(materials.map((m) => m.id));
-  return materials.map((m) => ({ ...m, avgCostPerKg: avgCostMap.get(m.id) ?? 0 }));
+/** For the Sale form — only materials that actually have an unsold lot to
+ * sell from (the Lot dropdown is what drives cost/remaining preview now,
+ * not a material-wide blended average). Pass `excludeSaleId` when editing
+ * a sale so its own material/lot still appears even if this sale is the
+ * only thing keeping that lot's remaining above zero. */
+export async function getMaterialsForSaleSelect(excludeSaleId?: string) {
+  const [materials, lots] = await Promise.all([
+    prisma.material.findMany({
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, unit: true, pricePerKg: true },
+    }),
+    getAvailableLotsForSale(excludeSaleId),
+  ]);
+  const materialIdsWithStock = new Set(lots.map((l) => l.materialId));
+  return materials.filter((m) => materialIdsWithStock.has(m.id));
 }
 
 /** All-time weight bought/sold per material — "how much sold, how much
