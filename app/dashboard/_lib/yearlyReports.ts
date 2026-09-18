@@ -139,9 +139,13 @@ export async function saveYearlyReport(year: number): Promise<void> {
 export async function ensureYearlyReportsArchived(): Promise<void> {
   const currentYear = new Date().getFullYear();
 
-  const [earliestSale, earliestPurchase] = await Promise.all([
+  // Fired as one batch — these three don't depend on each other, so there's
+  // no reason to pay for a second sequential round trip to check `existing`
+  // only after the first two come back.
+  const [earliestSale, earliestPurchase, existing] = await Promise.all([
     prisma.sale.findFirst({ orderBy: { date: "asc" }, select: { date: true } }),
     prisma.purchase.findFirst({ orderBy: { date: "asc" }, select: { date: true } }),
+    prisma.yearlyReport.findMany({ select: { year: true } }),
   ]);
   const candidateYears = [earliestSale?.date.getFullYear(), earliestPurchase?.date.getFullYear()].filter(
     (y): y is number => y !== undefined,
@@ -149,8 +153,6 @@ export async function ensureYearlyReportsArchived(): Promise<void> {
   if (candidateYears.length === 0) return; // nothing recorded yet
 
   const earliestYear = Math.min(...candidateYears);
-
-  const existing = await prisma.yearlyReport.findMany({ select: { year: true } });
   const alreadySaved = new Set(existing.map((r) => r.year));
 
   for (let year = earliestYear; year < currentYear; year++) {

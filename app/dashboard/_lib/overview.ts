@@ -1,8 +1,6 @@
 import "server-only";
 
 import { prisma } from "@/app/lib/db";
-import { getMaterialAvgCostPerKgMap } from "./costing";
-import { getYearActivityTotals } from "./yearlyReports";
 import { deriveStatus } from "./balances";
 import type { TrendPoint } from "../_components/TrendChart";
 import type { MaterialSlice } from "../_components/MaterialBreakdown";
@@ -19,36 +17,82 @@ function startOfNextMonth(date: Date) {
 function startOfPrevMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth() - 1, 1);
 }
+function startOfYear(year: number) {
+  return new Date(year, 0, 1);
+}
+function startOfNextYear(year: number) {
+  return new Date(year + 1, 0, 1);
+}
 
 function percentDelta(current: number, previous: number): number {
   if (previous === 0) return current === 0 ? 0 : 100;
   return ((current - previous) / Math.abs(previous)) * 100;
 }
 
+/** Same weighted-average-cost math as getMaterialAvgCostPerKgMap, but computed
+ * in memory from purchases already fetched in the same batch — avoids a
+ * second sequential round trip to the database just for this. */
+function computeAvgCostMap(
+  purchases: { materialId: string; weightKg: number; landedCostPerKg: number }[],
+): Map<string, number> {
+  const totals = new Map<string, { weight: number; cost: number }>();
+  for (const p of purchases) {
+    const entry = totals.get(p.materialId) ?? { weight: 0, cost: 0 };
+    entry.weight += p.weightKg;
+    entry.cost += p.weightKg * p.landedCostPerKg;
+    totals.set(p.materialId, entry);
+  }
+  const result = new Map<string, number>();
+  for (const [materialId, entry] of totals) {
+    result.set(materialId, entry.weight > 0 ? entry.cost / entry.weight : 0);
+  }
+  return result;
+}
+
+/** Every query this needs, fired as ONE parallel batch — each round trip to
+ * the (remote) database has real fixed latency, so collapsing what used to
+ * be several sequential batches into a single one is what keeps this page
+ * loading in a couple of seconds instead of several times that. */
 export async function getOverviewKpis(): Promise<Kpi[]> {
   const now = new Date();
   const thisMonthStart = startOfMonth(now);
   const nextMonthStart = startOfNextMonth(now);
   const lastMonthStart = startOfPrevMonth(now);
+  const currentYear = now.getFullYear();
+  const thisYearStart = startOfYear(currentYear);
+  const nextYearStart = startOfNextYear(currentYear);
+  const lastYearStart = startOfYear(currentYear - 1);
 
   const [
     salesThisMonth,
     salesLastMonth,
+    salesThisYear,
+    salesLastYear,
     purchasesThisMonth,
     purchasesLastMonth,
+    purchasesThisYear,
+    purchasesLastYear,
     allSales,
     allPurchases,
+    allPurchasesForCost,
     allPayments,
     materials,
     companyExpensesThisMonth,
     companyExpensesLastMonth,
+    companyExpensesThisYear,
+    companyExpensesLastYear,
   ] = await Promise.all([
     prisma.sale.findMany({ where: { date: { gte: thisMonthStart, lt: nextMonthStart } } }),
     prisma.sale.findMany({ where: { date: { gte: lastMonthStart, lt: thisMonthStart } } }),
+    prisma.sale.findMany({ where: { date: { gte: thisYearStart, lt: nextYearStart } } }),
+    prisma.sale.findMany({ where: { date: { gte: lastYearStart, lt: thisYearStart } } }),
     prisma.purchase.findMany({ where: { date: { gte: thisMonthStart, lt: nextMonthStart } } }),
     prisma.purchase.findMany({ where: { date: { gte: lastMonthStart, lt: thisMonthStart } } }),
+    prisma.purchase.findMany({ where: { date: { gte: thisYearStart, lt: nextYearStart } } }),
+    prisma.purchase.findMany({ where: { date: { gte: lastYearStart, lt: thisYearStart } } }),
     prisma.sale.findMany({ select: { totalAmount: true, grandTotal: true } }),
     prisma.purchase.findMany({ select: { totalAmount: true } }),
+    prisma.purchase.findMany({ select: { materialId: true, weightKg: true, landedCostPerKg: true } }),
     prisma.payment.findMany({ select: { direction: true, amount: true } }),
     prisma.material.findMany({ select: { id: true, stockKg: true } }),
     prisma.companyExpense.findMany({
@@ -57,6 +101,14 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
     }),
     prisma.companyExpense.findMany({
       where: { date: { gte: lastMonthStart, lt: thisMonthStart } },
+      select: { amount: true },
+    }),
+    prisma.companyExpense.findMany({
+      where: { date: { gte: thisYearStart, lt: nextYearStart } },
+      select: { amount: true },
+    }),
+    prisma.companyExpense.findMany({
+      where: { date: { gte: lastYearStart, lt: thisYearStart } },
       select: { amount: true },
     }),
   ]);
@@ -80,13 +132,20 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
   const soldThis = sumWeight(salesThisMonth);
   const soldLast = sumWeight(salesLastMonth);
 
-  const currentYear = now.getFullYear();
-  const [thisYear, lastYear] = await Promise.all([
-    getYearActivityTotals(currentYear),
-    getYearActivityTotals(currentYear - 1),
-  ]);
+  const thisYear = {
+    revenue: sum(salesThisYear),
+    netProfit: sumProfit(salesThisYear) - sumAmount(companyExpensesThisYear),
+    weightBought: sumWeight(purchasesThisYear),
+    weightSold: sumWeight(salesThisYear),
+  };
+  const lastYear = {
+    revenue: sum(salesLastYear),
+    netProfit: sumProfit(salesLastYear) - sumAmount(companyExpensesLastYear),
+    weightBought: sumWeight(purchasesLastYear),
+    weightSold: sumWeight(salesLastYear),
+  };
 
-  const avgCostMap = await getMaterialAvgCostPerKgMap(materials.map((m) => m.id));
+  const avgCostMap = computeAvgCostMap(allPurchasesForCost);
   const stockValue = materials.reduce((s, m) => s + m.stockKg * (avgCostMap.get(m.id) ?? 0), 0);
   const stockOnHandKg = materials.reduce((s, m) => s + m.stockKg, 0);
   // Bought minus sold this month — no "vs last month" delta shown: as a
@@ -222,11 +281,11 @@ export function getSaleTrend(days = 14): Promise<TrendPoint[]> {
 }
 
 export async function getStockByMaterial(): Promise<MaterialSlice[]> {
-  const materials = await prisma.material.findMany({
-    orderBy: { name: "asc" },
-    take: 6,
-  });
-  const avgCostMap = await getMaterialAvgCostPerKgMap(materials.map((m) => m.id));
+  const [materials, purchases] = await Promise.all([
+    prisma.material.findMany({ orderBy: { name: "asc" }, take: 6 }),
+    prisma.purchase.findMany({ select: { materialId: true, weightKg: true, landedCostPerKg: true } }),
+  ]);
+  const avgCostMap = computeAvgCostMap(purchases);
 
   return materials.map((m, i) => ({
     material: m.name,

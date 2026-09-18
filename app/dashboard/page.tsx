@@ -25,20 +25,20 @@ export const metadata: Metadata = {
 export default async function DashboardOverviewPage() {
   await verifySession();
 
-  // Files away every complete past year that isn't saved yet — this is
-  // what makes "save every year" happen without a separate scheduled job.
-  await ensureYearlyReportsArchived();
-
-  const [kpis, purchaseTrend, saleTrend, stockByMaterial, recentActivity, topContacts, yearlyReports] =
-    await Promise.all([
-      getOverviewKpis(),
-      getPurchaseTrend(),
-      getSaleTrend(),
-      getStockByMaterial(),
-      getRecentActivity(),
-      getTopContacts(),
-      getYearlyReports(),
-    ]);
+  // ensureYearlyReportsArchived runs alongside everything else below (it's
+  // independent of them) rather than blocking ahead of it — only
+  // getYearlyReports itself has to wait for it, since it reads the table
+  // the archive check writes to.
+  const [, kpis, purchaseTrend, saleTrend, stockByMaterial, recentActivity, topContacts] = await Promise.all([
+    ensureYearlyReportsArchived(),
+    getOverviewKpis(),
+    getPurchaseTrend(),
+    getSaleTrend(),
+    getStockByMaterial(),
+    getRecentActivity(),
+    getTopContacts(),
+  ]);
+  const yearlyReports = await getYearlyReports();
 
   return (
     <div className="flex flex-col gap-6">
