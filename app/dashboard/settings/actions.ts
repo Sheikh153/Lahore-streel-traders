@@ -6,6 +6,7 @@ import { prisma } from "@/app/lib/db";
 import { verifySession } from "@/app/lib/dal";
 import { isUniqueConstraintError } from "@/app/lib/prisma-errors";
 import type { DeleteState } from "@/app/dashboard/_components/DeleteButton";
+import { WIPE_SALES_PURCHASES_PHRASE } from "./_lib/dangerZone";
 
 export type CompanySettingsFormState = { error?: string; success?: boolean } | undefined;
 
@@ -91,4 +92,38 @@ export async function deleteTeamMember(
 
   await prisma.user.delete({ where: { id } });
   revalidatePath("/dashboard/settings");
+}
+
+// --- Danger Zone: permanently wipe all sales/purchases ---
+
+export type WipeState = { error?: string; success?: boolean } | undefined;
+
+/** Permanently deletes every Sale and Purchase, plus everything that
+ * references them (Payments, and — via DB-level cascade — their Expenses
+ * and Attachments). Gated behind typing an exact confirmation phrase since
+ * there's no undo; callers should direct people to
+ * /api/admin/export-sales-purchases first. Payments and Sales have to go
+ * before Purchases: Payment.purchaseId/saleId and Sale.purchaseId are all
+ * onDelete: Restrict, so deleting a Purchase that's still referenced would
+ * otherwise fail. */
+export async function wipeSalesAndPurchases(
+  _prevState: WipeState,
+  formData: FormData,
+): Promise<WipeState> {
+  await verifySession();
+
+  const confirmation = String(formData.get("confirmation") ?? "");
+  if (confirmation !== WIPE_SALES_PURCHASES_PHRASE) {
+    return { error: `Type "${WIPE_SALES_PURCHASES_PHRASE}" exactly to confirm.` };
+  }
+
+  await prisma.$transaction([
+    prisma.payment.deleteMany({}),
+    prisma.sale.deleteMany({}),
+    prisma.purchase.deleteMany({}),
+  ]);
+
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/settings");
+  return { success: true };
 }

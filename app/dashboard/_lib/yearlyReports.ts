@@ -47,7 +47,7 @@ export async function getYearActivityTotals(year: number) {
  * up to (and including) `asOf` — a real point-in-time balance, not today's
  * live figures, so a past year's report still reads correctly no matter
  * how much has happened since. Pass `new Date()` for a live snapshot. */
-async function getBalancesAsOf(asOf: Date) {
+export async function getBalancesAsOf(asOf: Date) {
   const [purchasesUpTo, salesUpTo, paymentsUpTo, materials] = await Promise.all([
     prisma.purchase.findMany({
       where: { date: { lte: asOf } },

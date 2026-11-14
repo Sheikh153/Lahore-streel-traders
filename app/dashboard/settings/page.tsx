@@ -3,9 +3,11 @@ import { verifySession } from "@/app/lib/dal";
 import { formatDateLong } from "@/app/dashboard/_lib/format";
 import DeleteButton from "@/app/dashboard/_components/DeleteButton";
 import { getCompanySettings, getTeamMembers } from "./_lib/queries";
-import { updateCompanySettings, createTeamMember, deleteTeamMember } from "./actions";
+import { updateCompanySettings, createTeamMember, deleteTeamMember, wipeSalesAndPurchases } from "./actions";
+import { WIPE_SALES_PURCHASES_PHRASE } from "./_lib/dangerZone";
 import CompanySettingsForm from "./_components/CompanySettingsForm";
 import TeamForm from "./_components/TeamForm";
+import DangerZone from "./_components/DangerZone";
 
 export const metadata: Metadata = { title: "Settings" };
 
@@ -75,6 +77,8 @@ export default async function SettingsPage() {
           <TeamForm action={createTeamMember} />
         </div>
       </div>
+
+      <DangerZone action={wipeSalesAndPurchases} confirmPhrase={WIPE_SALES_PURCHASES_PHRASE} />
     </div>
   );
 }
