@@ -181,9 +181,9 @@ model CompanyExpense {
   @@index([archiveId])
 }
 
-// A snapshot of one expense "period" (the 10th of a month through the 9th
+// A snapshot of one expense "period" (the 25th of a month through the 24th
 // of the next) — created automatically the first time anyone opens the
-// Expenses page on or after the 10th. Rows aren't deleted, only tagged via
+// Expenses page on or after the 25th. Rows aren't deleted, only tagged via
 // CompanyExpense.archiveId, so nothing here affects profit/KPI totals
 // (which read CompanyExpense directly) — this only clears the *current*
 // list on the Expenses page and files the period away as a browsable,

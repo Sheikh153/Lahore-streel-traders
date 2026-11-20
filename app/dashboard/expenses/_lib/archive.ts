@@ -2,11 +2,11 @@ import "server-only";
 
 import { prisma } from "@/app/lib/db";
 
-// Expense "periods" run the 10th of one month through the 9th of the next —
+// Expense "periods" run the 25th of one month through the 24th of the next —
 // not the calendar month. Change this single constant to move the cutover day.
-const CUTOFF_DAY = 10;
+const CUTOFF_DAY = 25;
 
-/** The 10th-of-month that begins the period containing `date`. */
+/** The 25th-of-month that begins the period containing `date`. */
 export function periodStartFor(date: Date): Date {
   const day = date.getDate();
   const y = date.getFullYear();
@@ -27,7 +27,7 @@ function periodLabel(periodStart: Date, periodEnd: Date): string {
 /** Idempotent — files away any past period's expenses that haven't been
  * archived yet, leaving only the current period's rows "live" on the
  * Expenses page. Safe (and cheap when there's nothing to do) to call on
- * every page load; this is what makes the "reset on the 10th" happen
+ * every page load; this is what makes the "reset on the 25th" happen
  * without needing a separate scheduled job. Handles more than one missed
  * period (e.g. the app wasn't opened for a couple of months) by archiving
  * each one separately, oldest first, so the monthly breakdown stays accurate. */

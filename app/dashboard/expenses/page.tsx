@@ -18,8 +18,8 @@ export default async function ExpensesPage({
   const { q } = await searchParams;
   const search = typeof q === "string" ? q : undefined;
 
-  // Files away any past period (10th-to-9th) that hasn't been archived
-  // yet — this is what makes the list "reset" on the 10th of each month.
+  // Files away any past period (25th-to-24th) that hasn't been archived
+  // yet — this is what makes the list "reset" on the 25th of each month.
   await ensureExpensePeriodsArchived();
 
   const [expenses, archives] = await Promise.all([
@@ -38,7 +38,7 @@ export default async function ExpensesPage({
         <p className="text-sm text-slate-500 dark:text-slate-400">
           Business overhead — rent, utilities, salaries, and other running costs.
           These reduce net profit but aren&apos;t tied to any purchase or sale.
-          The list below resets on the 10th of each month — last month&apos;s
+          The list below resets on the 25th of each month — last period&apos;s
           entries are filed under Archived months.
         </p>
       </div>
