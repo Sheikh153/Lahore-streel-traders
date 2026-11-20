@@ -182,12 +182,6 @@ export async function getOverviewKpis(): Promise<Kpi[]> {
       upIsGood: true,
     },
     {
-      label: "Net profit this year",
-      value: `Rs ${Math.round(thisYear.netProfit).toLocaleString("en-US")}`,
-      deltaPercent: percentDelta(thisYear.netProfit, lastYear.netProfit),
-      upIsGood: true,
-    },
-    {
       label: "Stock value",
       value: `Rs ${Math.round(stockValue).toLocaleString("en-US")}`,
       upIsGood: true,
