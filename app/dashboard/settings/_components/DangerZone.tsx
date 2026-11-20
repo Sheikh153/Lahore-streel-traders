@@ -24,7 +24,8 @@ export default function DangerZone({
       <h3 className="text-sm font-semibold text-red-700 dark:text-red-400">Danger zone</h3>
       <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
         Permanently delete every sale and purchase on record, along with their payments, expenses,
-        and attachments. This cannot be undone.
+        and attachments — resets every material&apos;s stock to zero and clears the saved yearly/monthly
+        report snapshots too, so every reading goes back to zero. This cannot be undone.
       </p>
 
       <a

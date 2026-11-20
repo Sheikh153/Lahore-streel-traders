@@ -99,13 +99,17 @@ export async function deleteTeamMember(
 export type WipeState = { error?: string; success?: boolean } | undefined;
 
 /** Permanently deletes every Sale and Purchase, plus everything that
- * references them (Payments, and — via DB-level cascade — their Expenses
- * and Attachments). Gated behind typing an exact confirmation phrase since
- * there's no undo; callers should direct people to
- * /api/admin/export-sales-purchases first. Payments and Sales have to go
- * before Purchases: Payment.purchaseId/saleId and Sale.purchaseId are all
- * onDelete: Restrict, so deleting a Purchase that's still referenced would
- * otherwise fail. */
+ * references or derives from them: Payments (and — via DB-level cascade —
+ * their Expenses and Attachments), every Material's running stockKg counter
+ * (normally incremented/decremented as purchases/sales happen — bulk
+ * deleting bypasses that, so it has to be reset explicitly back to 0), and
+ * the saved Yearly/Monthly report snapshots (otherwise they'd keep showing
+ * stale revenue/stock figures from before the wipe). Gated behind typing an
+ * exact confirmation phrase since there's no undo; callers should direct
+ * people to /api/admin/export-sales-purchases first. Payments and Sales
+ * have to go before Purchases: Payment.purchaseId/saleId and
+ * Sale.purchaseId are all onDelete: Restrict, so deleting a Purchase that's
+ * still referenced would otherwise fail. */
 export async function wipeSalesAndPurchases(
   _prevState: WipeState,
   formData: FormData,
@@ -121,6 +125,9 @@ export async function wipeSalesAndPurchases(
     prisma.payment.deleteMany({}),
     prisma.sale.deleteMany({}),
     prisma.purchase.deleteMany({}),
+    prisma.material.updateMany({ data: { stockKg: 0 } }),
+    prisma.yearlyReport.deleteMany({}),
+    prisma.monthlyReport.deleteMany({}),
   ]);
 
   revalidatePath("/dashboard");
